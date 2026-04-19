@@ -6,4 +6,5 @@ services:
     environment:
       - CARDDAV_URL=https://sample.carddav.server.com
       - COLOR_SCHEME=system
+      - NODE_ENV=production
     restart: unless-stopped
