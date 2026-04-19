@@ -54,12 +54,18 @@ Who Contacts will now be available to tell you who is in your contact list (8842
 
 I'm using Who Contacts daily so I plan on supporting it long-term. I also want it to be fully vCard v4 compliant (and v3 if possible) and to fully work with all self-hostable CalDAV/CardDAV servers.
 
-## Future plans
+### Future plans
 
 - General bugfixes to ensure this compatibility
-- vCard export
-- Supporting TYPE:group and TYPE:org entries (currently those are ignored, only TYPE:individual can be edited)
+- vCard export, globally as well as individual contacts
+- Supporting TYPE:group and TYPE:org entries (currently those are ignored, only TYPE:individual can be edited, groups are supported using the category attribute)
 - Improved support for custom fields (currently existing ones should be readable as well as editable, but new ones can't be added)
+- Multiselection, multi-edit (especially groups), and multi-delete
+
+### Not in scope
+
+- Anything that requires persistant storage; Who is supposed to be a fronted for a CardDAV server, nothing more
+- Older vCard standards; vCard v4 is the priority, v3 seems to work but is not the priority, anything else is untested/unsupported
 
 ## How to contribute
 Bug reports are always useful (if you run into bugs, which of course I hope won't happen ...).
