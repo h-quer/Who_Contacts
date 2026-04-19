@@ -15,12 +15,13 @@ To be honest, I'm not sure. I'm still testing myself and I hope I have caught an
 
 ## Screenshots
 todo
-]
+
+<!--
 <p align="center">
   <img src="/images/light.png" alt="light" width="48%"/>
   <img src="/images/dark.png" alt="dark" width="48%"/>
 </p>
-]: #
+-->
 
 ## Setup and installation
 
