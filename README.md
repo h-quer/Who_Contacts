@@ -37,8 +37,9 @@ services:
     ports:
       - "8842:3000"
     environment:
-      - CARDDAV_URL=https://sample.carddav.server.com
-      - COLOR_SCHEME=system
+      - CARDDAV_URL=https://sample.carddav.server.com    // adjust to your CardDAV server URL
+      - COLOR_SCHEME=system                              // system, light, dark
+      - NODE_ENV=production
     restart: unless-stopped
 ```
 Once it's set, simply pull and start the image:
