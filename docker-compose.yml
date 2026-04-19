@@ -1,0 +1,9 @@
+services:
+  who_contacts:
+    image: ghcr.io/h-quer/who_contacts:latest
+    ports:
+      - "8842:3000"
+    environment:
+      - CARDDAV_URL=https://sample.carddav.server.com
+      - COLOR_SCHEME=system
+    restart: unless-stopped

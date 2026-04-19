@@ -1,0 +1,5 @@
+{
+  "name": "Who Contacts",
+  "description": "CardDAV client and web UI",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-tardis: var(--tardis-color);
+  --color-tardis-light: var(--tardis-light-color);
+  --color-tardis-dark: var(--tardis-dark-color);
+  --color-dalek: #F7BC39;
+  --color-dalek-dark: #d9a32d;
+  --color-cyberman: #bdc3c7;
+  --color-vortex: #8e44ad;
+  --color-gallifrey: #e67e22;
+  --color-gallifrey-dark: #d35400;
+  
+  --color-bg-light: #f8fafc;
+  --color-text-light: #0f172a;
+  --color-panel-light: #ffffff;
+  --color-border-light: #e2e8f0;
+  
+  --color-bg-dark: #020617;
+  --color-text-dark: #f1f5f9;
+  --color-panel-dark: #0f172a;
+  --color-border-dark: #1e293b;
+
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  --animate-spin-slow: spin-slow 8s linear infinite;
+}
+
+:root {
+  --tardis-color: #003b6f;
+  --tardis-light-color: #0056a3;
+  --tardis-dark-color: #002240;
+  
+  --bg-color: var(--color-bg-light);
+  --text-color: var(--color-text-light);
+  --panel-bg: var(--color-panel-light);
+  --border-color: var(--color-border-light);
+}
+
+.dark {
+  --tardis-color: #60a5fa; /* Lighter blue for dark mode contrast */
+  --tardis-light-color: #93c5fd;
+  --tardis-dark-color: #2563eb;
+
+  --bg-color: var(--color-bg-dark);
+  --text-color: var(--color-text-dark);
+  --panel-bg: var(--color-panel-dark);
+  --border-color: var(--color-border-dark);
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
