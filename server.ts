@@ -343,6 +343,25 @@ app.get('/api/contacts', async (req, res) => {
                 };
               });
             }
+
+            // Sync X-ABLabel to type
+            for (const key in normalized) {
+              if (key.toLowerCase() === 'x-ablabel') continue;
+              const items = normalized[key];
+              if (!Array.isArray(items)) continue;
+              
+              for (const item of items) {
+                if (item.group && (!item.type || item.type.trim() === '')) {
+                   const labels = normalized['x-ablabel'];
+                   if (labels && Array.isArray(labels)) {
+                     const matchingLabel = labels.find((l: any) => l.group === item.group);
+                     if (matchingLabel && matchingLabel.value) {
+                       item.type = matchingLabel.value;
+                     }
+                   }
+                }
+              }
+            }
   
             allContacts.push({
               id: vcardObj.url,
@@ -602,6 +621,30 @@ app.post('/api/contacts/import', async (req, res) => {
   } catch (err: any) {
     console.error('Import failed:', err);
     res.status(500).json({ error: err.message || 'Import failed' });
+  }
+});
+
+// Export contacts to vCard 4.0
+app.post('/api/export', (req, res) => {
+  const { contacts } = req.body;
+  
+  if (!Array.isArray(contacts)) {
+    return res.status(400).json({ error: 'Contacts array required' });
+  }
+  
+  try {
+    const vcards = contacts.map((c: any) => {
+      const parsedData = c.parsed;
+      parsedData.version = '4.0';
+      return reconstructVCard(parsedData);
+    });
+    
+    const vcardString = vcards.join('\r\n');
+    res.set('Content-Type', 'text/vcard');
+    res.send(vcardString);
+  } catch (err: any) {
+    console.error('Export failed:', err);
+    res.status(500).json({ error: err.message || 'Export failed' });
   }
 });
 
