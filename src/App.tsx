@@ -157,7 +157,7 @@ export default function App() {
     }
   };
 
-  const handleExport = async (type: 'all' | 'addressBook' | 'selected') => {
+  const handleExport = async (type: 'all' | 'addressBook' | 'selected' | 'group' | 'multi') => {
     setIsExporting(true);
     let targetContacts: Contact[] = [];
     if (type === 'all') {
@@ -169,6 +169,23 @@ export default function App() {
     } else if (type === 'selected') {
       const selected = contacts.find(c => c.id === selectedContactId);
       if (selected) targetContacts = [selected];
+    } else if (type === 'group') {
+      targetContacts = contacts.filter(c => {
+        if (selectedGroupId === 'all') return true;
+        if (selectedGroupId === 'ungrouped') {
+          const allGroups = c.parsed.categories?.flatMap((cat: any) => 
+            cat.value ? cat.value.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+          ) || [];
+          return allGroups.length === 0;
+        } else {
+          const contactGroups = c.parsed.categories?.flatMap((cat: any) => 
+            cat.value ? cat.value.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+          ) || [];
+          return contactGroups.includes(selectedGroupId);
+        }
+      });
+    } else if (type === 'multi') {
+      targetContacts = contacts.filter(c => selectedContactIds.includes(c.id));
     }
     
     if (targetContacts.length === 0) {
@@ -397,6 +414,19 @@ export default function App() {
             </div>
             
             <div className="flex flex-col space-y-3">
+              {isMultiSelectMode && selectedContactIds.length > 0 && (
+                <button
+                  onClick={() => handleExport('multi')}
+                  disabled={isExporting}
+                  className="w-full text-left px-4 py-3 rounded-md bg-tardis/10 hover:bg-tardis/20 text-tardis transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed border border-tardis/30 font-medium"
+                >
+                  <span>Selected Multiple Contacts</span>
+                  <span className="text-xs text-tardis font-bold bg-tardis/20 px-2 py-1 rounded-full">
+                    {selectedContactIds.length} items
+                  </span>
+                </button>
+              )}
+            
               <button
                 onClick={() => handleExport('selected')}
                 disabled={!selectedContactId || isExporting}
@@ -408,6 +438,43 @@ export default function App() {
                 </span>
               </button>
               
+              {selectedGroupId !== 'all' && (
+                <button
+                  onClick={() => handleExport('group')}
+                  disabled={contacts.filter(c => {
+                    if (selectedGroupId === 'ungrouped') {
+                      const allGroups = c.parsed.categories?.flatMap((cat: any) => 
+                        cat.value ? cat.value.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+                      ) || [];
+                      return allGroups.length === 0;
+                    } else {
+                      const contactGroups = c.parsed.categories?.flatMap((cat: any) => 
+                        cat.value ? cat.value.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+                      ) || [];
+                      return contactGroups.includes(selectedGroupId);
+                    }
+                  }).length === 0 || isExporting}
+                  className="w-full text-left px-4 py-3 rounded-md bg-gray-50 dark:bg-gray-800/50 hover:bg-tardis/10 hover:text-tardis transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed border border-[var(--border-color)]"
+                >
+                  <span className="truncate max-w-[200px]">This Group ({selectedGroupId === 'ungrouped' ? 'Ungrouped' : selectedGroupId})</span>
+                  <span className="text-xs text-gray-500 font-medium bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full shrink-0">
+                    {contacts.filter(c => {
+                      if (selectedGroupId === 'ungrouped') {
+                        const allGroups = c.parsed.categories?.flatMap((cat: any) => 
+                          cat.value ? cat.value.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+                        ) || [];
+                        return allGroups.length === 0;
+                      } else {
+                        const contactGroups = c.parsed.categories?.flatMap((cat: any) => 
+                          cat.value ? cat.value.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+                        ) || [];
+                        return contactGroups.includes(selectedGroupId);
+                      }
+                    }).length} items
+                  </span>
+                </button>
+              )}
+
               <button
                 onClick={() => handleExport('addressBook')}
                 disabled={contacts.filter(c => selectedAddressBook === 'all' || !selectedAddressBook ? true : c.addressBook === selectedAddressBook).length === 0 || isExporting}
@@ -1968,11 +2035,11 @@ function FieldSection({
       <div className="pl-3">
         <div className={cn(isGrid && isEditing ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "space-y-3")}>
           {items.map((item: any, idx: number) => (
-            <div key={idx} className="flex flex-col space-y-2 min-w-0">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-3 w-full min-w-0">
+            <div key={idx} className="flex flex-col space-y-2 min-w-0 border-b border-tardis/10 pb-3 last:border-0 last:pb-0">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 w-full min-w-0">
               {isEditing ? (
                 <>
-                  <div className="flex-1 w-full sm:w-auto min-w-0">
+                  <div className="flex-1 w-full min-w-0 sm:min-w-[250px]">
                     {selectOptions ? (
                       <select
                         value={(() => {
@@ -2117,7 +2184,7 @@ function FieldSection({
                               placeholder="Custom type"
                               value={item.type === 'custom' ? '' : item.type}
                               onChange={(e) => onUpdate(fieldKey, idx, 'type', e.target.value)}
-                              className="w-full sm:w-min flex-1 px-2 py-2 bg-[var(--bg-color)] border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-2 focus:ring-tardis text-sm"
+                              className="flex-1 w-full sm:w-32 px-2 py-2 bg-[var(--bg-color)] border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-2 focus:ring-tardis text-sm"
                               autoFocus={item.type === 'custom'}
                             />
                           )}
