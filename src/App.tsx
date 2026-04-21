@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, Phone, Mail, MapPin, Briefcase, Plus, Save, X, Edit2, AlertCircle, Users, Layers, PlusCircle, Tag, Cake, Heart, MessageSquare, Globe, Clock, Map, Award, UserCheck, FileText, Link, Link2, Book, Trash2, Info, LogOut, Lock, Upload, Star, Menu, ChevronLeft } from 'lucide-react';
+import { Search, User, Phone, Mail, MapPin, Briefcase, Plus, Save, X, Edit2, AlertCircle, Users, Layers, PlusCircle, Tag, Cake, Heart, MessageSquare, Globe, Clock, Map, Award, UserCheck, FileText, Link, Link2, Book, Trash2, Info, LogOut, Lock, Upload, Download, Star, Menu, ChevronLeft, ListChecks } from 'lucide-react';
 import { cn } from './lib/utils';
 import axios from 'axios';
 
@@ -31,6 +31,16 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+  const [bulkEditField, setBulkEditField] = useState<string>('org');
+  const [bulkEditData, setBulkEditData] = useState<any>({ org: [] });
+  const [bulkEditAction, setBulkEditAction] = useState<'replace' | 'append'>('replace');
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
   // Load config and initial theme
   useEffect(() => {
@@ -147,6 +157,146 @@ export default function App() {
     }
   };
 
+  const handleExport = async (type: 'all' | 'addressBook' | 'selected') => {
+    setIsExporting(true);
+    let targetContacts: Contact[] = [];
+    if (type === 'all') {
+      targetContacts = contacts;
+    } else if (type === 'addressBook') {
+      targetContacts = contacts.filter(c => 
+        selectedAddressBook === 'all' || !selectedAddressBook ? true : c.addressBook === selectedAddressBook
+      );
+    } else if (type === 'selected') {
+      const selected = contacts.find(c => c.id === selectedContactId);
+      if (selected) targetContacts = [selected];
+    }
+    
+    if (targetContacts.length === 0) {
+      alert("No contacts to export");
+      setIsExporting(false);
+      setIsExportModalOpen(false);
+      return;
+    }
+    
+    try {
+      const res = await axiosInstance.post('/api/export', { contacts: targetContacts }, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', type === 'selected' ? 'contact.vcf' : 'contacts.vcf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed", err);
+      alert("Export failed");
+    } finally {
+      setIsExporting(false);
+      setIsExportModalOpen(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedContactIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to strictly DELETE ${selectedContactIds.length} contacts? This cannot be undone.`)) return;
+
+    setIsBulkProcessing(true);
+    let successCount = 0;
+    const selectedContacts = contacts.filter(c => selectedContactIds.includes(c.id));
+    
+    for (const contact of selectedContacts) {
+       try {
+           await axiosInstance.delete('/api/contacts', {
+               data: { id: contact.id, etag: contact.etag }
+           });
+           successCount++;
+       } catch (e) {
+           console.error("Failed to delete contact in bulk loop", contact.id, e);
+       }
+    }
+    
+    setIsBulkProcessing(false);
+    setSelectedContactIds([]);
+    setIsMultiSelectMode(false);
+    alert(`Successfully deleted ${successCount} out of ${selectedContactIds.length} contacts.`);
+    fetchContacts();
+    
+    if (selectedContactId && selectedContactIds.includes(selectedContactId)) {
+       setSelectedContactId(null);
+    }
+  };
+
+  const handleBulkEditSave = async () => {
+    if (selectedContactIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to overwrite '${bulkEditField}' for ${selectedContactIds.length} contacts?`)) return;
+
+    setIsBulkProcessing(true);
+    let successCount = 0;
+    
+    const selectedContacts = contacts.filter(c => selectedContactIds.includes(c.id));
+    
+    for (const contact of selectedContacts) {
+         try {
+             const newParsedData = JSON.parse(JSON.stringify(contact.parsed));
+             
+             if (bulkEditAction === 'replace') {
+                 newParsedData[bulkEditField] = bulkEditData[bulkEditField] || [];
+             } else {
+                 if (!newParsedData[bulkEditField]) newParsedData[bulkEditField] = [];
+                 newParsedData[bulkEditField] = [...newParsedData[bulkEditField], ...(bulkEditData[bulkEditField] || [])];
+             }
+             
+             await axiosInstance.put('/api/contacts', {
+                 id: contact.id,
+                 etag: contact.etag,
+                 parsedData: newParsedData
+             });
+             successCount++;
+         } catch (e) {
+             console.error("Failed to update contact in bulk loop", contact.id, e);
+         }
+    }
+    
+    setIsBulkProcessing(false);
+    setIsBulkEditModalOpen(false);
+    setSelectedContactIds([]);
+    setIsMultiSelectMode(false);
+    alert(`Successfully updated ${successCount} out of ${selectedContactIds.length} contacts.`);
+    fetchContacts();
+  };
+
+  const updateBulkField = (key: string, index: number, field: string, value: string) => {
+    const newData = { ...bulkEditData };
+    if (!newData[key]) newData[key] = [];
+    if (!newData[key][index]) newData[key][index] = { value: '', type: '', pref: '' };
+    newData[key][index][field] = value;
+    setBulkEditData(newData);
+  };
+
+  const addBulkField = (key: string) => {
+    setBulkEditData({ ...bulkEditData, [key]: [...(bulkEditData[key] || []), { value: '', type: '', pref: '' }] });
+  };
+
+  const removeBulkField = (key: string, index: number) => {
+    const arr = [...(bulkEditData[key] || [])];
+    arr.splice(index, 1);
+    setBulkEditData({ ...bulkEditData, [key]: arr });
+  };
+
+  const BULK_EDITABLE_FIELDS = [
+      { id: 'org', label: 'Organization (org)', icon: <Briefcase className="w-5 h-5 text-tardis" /> },
+      { id: 'title', label: 'Title', icon: <Award className="w-5 h-5 text-tardis" /> },
+      { id: 'role', label: 'Role', icon: <UserCheck className="w-5 h-5 text-tardis" /> },
+      { id: 'categories', label: 'Categories / Tags', icon: <Tag className="w-5 h-5 text-tardis" /> },
+      { id: 'tel', label: 'Phone', icon: <Phone className="w-5 h-5 text-tardis" />, props: { hasType: true, hasPref: true } },
+      { id: 'email', label: 'Email', icon: <Mail className="w-5 h-5 text-tardis" />, props: { hasType: true, hasPref: true } },
+      { id: 'adr', label: 'Address', icon: <MapPin className="w-5 h-5 text-tardis" />, props: { hasType: true, hasPref: true, isAddress: true } },
+      { id: 'url', label: 'Website', icon: <Link className="w-5 h-5 text-tardis" />, props: { hasType: true, hasPref: true } },
+      { id: 'note', label: 'Notes', icon: <FileText className="w-5 h-5 text-tardis" /> },
+      { id: 'impp', label: 'Instant Messaging', icon: <MessageSquare className="w-5 h-5 text-tardis" />, props: { hasType: true, hasPref: true } }
+  ];
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-color)] text-[var(--text-color)] transition-colors duration-200">
       {/* Header */}
@@ -164,23 +314,20 @@ export default function App() {
           <h1 className="text-xl md:text-2xl font-bold tracking-wider hidden sm:block">Who Contacts</h1>
         </div>
         <div className="flex items-center space-x-2">
+          
           <button 
-            onClick={async () => {
-              try { await axios.post('/api/logout'); } catch (e) {}
-              setCredentials(null);
-              setIsCookieAuth(false);
-              setContacts([]);
-              setSelectedContactId(null);
-              setIsCreatingNew(false);
+            onClick={() => {
+              setIsMultiSelectMode(!isMultiSelectMode);
+              if (isMultiSelectMode) setSelectedContactIds([]);
             }}
-            className="p-2 rounded-full hover:bg-tardis-light transition-colors focus:outline-none focus:ring-2 focus:ring-dalek"
-            title="Logout"
+            className={cn("p-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-dalek", isMultiSelectMode ? "bg-white text-tardis hover:bg-gray-100" : "hover:bg-tardis-light")}
+            title="Select multiple"
           >
-            <LogOut className="w-6 h-6 text-dalek" />
+            <ListChecks className="w-6 h-6" />
           </button>
           
           <input 
-            type="file" 
+            type="file"  
             accept=".vcf,.vcard" 
             className="hidden" 
             ref={fileInputRef} 
@@ -200,14 +347,196 @@ export default function App() {
           </button>
 
           <button 
+            onClick={() => setIsExportModalOpen(true)}
+            className="p-2 rounded-full hover:bg-tardis-light transition-colors focus:outline-none focus:ring-2 focus:ring-dalek"
+            title="Export vCard"
+          >
+            <Download className="w-6 h-6 text-dalek" />
+          </button>
+
+          <button 
             onClick={() => setIsAboutOpen(true)}
             className="p-2 rounded-full hover:bg-tardis-light transition-colors focus:outline-none focus:ring-2 focus:ring-dalek"
             title="About Who Contacts"
           >
             <Info className="w-6 h-6 text-dalek" />
           </button>
+
+          <button 
+            onClick={async () => {
+              try { await axios.post('/api/logout'); } catch (e) {}
+              setCredentials(null);
+              setIsCookieAuth(false);
+              setContacts([]);
+              setSelectedContactId(null);
+              setIsCreatingNew(false);
+            }}
+            className="p-2 rounded-full hover:bg-tardis-light transition-colors focus:outline-none focus:ring-2 focus:ring-dalek"
+            title="Logout"
+          >
+            <LogOut className="w-6 h-6 text-dalek" />
+          </button>
         </div>
       </header>
+
+      {isExportModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-[var(--bg-color)] border border-[var(--border-color)] rounded-lg p-6 max-w-sm w-full shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--text-color)]">
+                <Download className="w-5 h-5 text-tardis" />
+                Export vCard
+              </h2>
+              <button 
+                onClick={() => setIsExportModalOpen(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                disabled={isExporting}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex flex-col space-y-3">
+              <button
+                onClick={() => handleExport('selected')}
+                disabled={!selectedContactId || isExporting}
+                className="w-full text-left px-4 py-3 rounded-md bg-gray-50 dark:bg-gray-800/50 hover:bg-tardis/10 hover:text-tardis transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed border border-[var(--border-color)]"
+              >
+                <span>Selected Contact</span>
+                <span className="text-xs text-gray-500 font-medium bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">
+                  1 item
+                </span>
+              </button>
+              
+              <button
+                onClick={() => handleExport('addressBook')}
+                disabled={contacts.filter(c => selectedAddressBook === 'all' || !selectedAddressBook ? true : c.addressBook === selectedAddressBook).length === 0 || isExporting}
+                className="w-full text-left px-4 py-3 rounded-md bg-gray-50 dark:bg-gray-800/50 hover:bg-tardis/10 hover:text-tardis transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed border border-[var(--border-color)]"
+              >
+                <span>This Address Book</span>
+                <span className="text-xs text-gray-500 font-medium bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">
+                  {contacts.filter(c => selectedAddressBook === 'all' || !selectedAddressBook ? true : c.addressBook === selectedAddressBook).length} items
+                </span>
+              </button>
+              
+              <button
+                onClick={() => handleExport('all')}
+                disabled={contacts.length === 0 || isExporting}
+                className="w-full text-left px-4 py-3 rounded-md bg-gray-50 dark:bg-gray-800/50 hover:bg-tardis/10 hover:text-tardis transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed border border-[var(--border-color)]"
+              >
+                <span className="font-medium text-tardis">All Contacts</span>
+                <span className="text-xs text-gray-500 font-medium bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">
+                  {contacts.length} items
+                </span>
+              </button>
+            </div>
+            
+            {isExporting && (
+              <div className="mt-4 flex flex-col items-center justify-center text-sm text-tardis">
+                <div className="w-5 h-5 border-2 border-tardis border-t-transparent rounded-full animate-spin mb-1" />
+                Processing...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isBulkEditModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-[var(--bg-color)] border border-[var(--border-color)] rounded-lg p-6 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--text-color)]">
+                <Edit2 className="w-5 h-5 text-tardis" />
+                Bulk Edit ({selectedContactIds.length} contacts)
+              </h2>
+              <button 
+                onClick={() => setIsBulkEditModalOpen(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                disabled={isBulkProcessing}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex flex-col space-y-4 max-h-[60vh] overflow-y-auto overflow-x-hidden p-1 min-w-0">
+              <div>
+                <label className="block text-sm font-medium mb-1">Select Field to Edit</label>
+                <select 
+                  value={bulkEditField} 
+                  onChange={(e) => {
+                    setBulkEditField(e.target.value);
+                    setBulkEditData({ [e.target.value]: [] });
+                  }}
+                  className="w-full px-3 py-2 bg-[var(--bg-color)] border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-2 focus:ring-tardis"
+                >
+                  {BULK_EDITABLE_FIELDS.map(f => (
+                    <option key={f.id} value={f.id}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Action</label>
+                <select 
+                  value={bulkEditAction} 
+                  onChange={(e) => setBulkEditAction(e.target.value as 'replace' | 'append')}
+                  className="w-full px-3 py-2 bg-[var(--bg-color)] border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-2 focus:ring-tardis"
+                >
+                  <option value="replace">Overwrite selected field for all selected contacts</option>
+                  <option value="append">Append to selected field for all selected contacts</option>
+                </select>
+              </div>
+
+              <div className="border border-[var(--border-color)] rounded-lg p-4 bg-[var(--panel-bg)] min-w-0">
+                {(() => {
+                  const fieldDef = BULK_EDITABLE_FIELDS.find(f => f.id === bulkEditField);
+                  if (!fieldDef) return null;
+                  return (
+                    <FieldSection 
+                      icon={fieldDef.icon}
+                      title={fieldDef.label}
+                      fieldKey={fieldDef.id}
+                      data={bulkEditData}
+                      isEditing={true}
+                      onUpdate={updateBulkField}
+                      onAdd={addBulkField}
+                      onRemove={removeBulkField}
+                      {...(fieldDef.props || {})}
+                    />
+                  );
+                })()}
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-[var(--border-color)]">
+              <button 
+                onClick={() => setIsBulkEditModalOpen(false)}
+                className="px-4 py-2 border border-[var(--border-color)] rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                disabled={isBulkProcessing}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleBulkEditSave}
+                disabled={isBulkProcessing}
+                className="px-4 py-2 bg-tardis text-white font-medium rounded-md hover:bg-tardis-light transition-colors flex items-center shadow-lg"
+              >
+                {isBulkProcessing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Apply to {selectedContactIds.length} Contacts
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isAboutOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
@@ -377,6 +706,32 @@ export default function App() {
                 className="w-full h-full pl-10 pr-4 bg-[var(--bg-color)] border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-2 focus:ring-tardis"
               />
             </div>
+            
+            {isMultiSelectMode && (
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border-color)] animate-in fade-in slide-in-from-top-2">
+                <span className="text-sm font-medium text-tardis">
+                  {selectedContactIds.length} selected
+                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsBulkEditModalOpen(true)}
+                    disabled={selectedContactIds.length === 0}
+                    className="flex items-center px-2 py-1 text-xs font-medium text-white bg-tardis rounded hover:bg-tardis-light disabled:opacity-50 transition-colors"
+                  >
+                    <Edit2 className="w-3.5 h-3.5 mr-1" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={selectedContactIds.length === 0}
+                    className="flex items-center px-2 py-1 text-xs font-medium text-white bg-dalek rounded hover:bg-dalek/90 disabled:opacity-50 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="flex-1 overflow-y-auto p-2">
@@ -397,6 +752,15 @@ export default function App() {
                 selectedAddressBook={selectedAddressBook}
                 selectedId={selectedContactId}
                 onSelect={handleSelectContact}
+                isMultiSelectMode={isMultiSelectMode}
+                selectedContactIds={selectedContactIds}
+                toggleSelection={(id) => {
+                   if (selectedContactIds.includes(id)) {
+                       setSelectedContactIds(selectedContactIds.filter(i => i !== id));
+                   } else {
+                       setSelectedContactIds([...selectedContactIds, id]);
+                   }
+                }}
               />
             )}
           </div>
@@ -453,7 +817,7 @@ export default function App() {
 
 // --- Subcomponents ---
 
-function ContactsList({ contacts, filter, selectedGroupId, selectedAddressBook, selectedId, onSelect }: { contacts: Contact[], filter: string, selectedGroupId: string, selectedAddressBook: string | null, selectedId: string | null, onSelect: (id: string) => void }) {
+function ContactsList({ contacts, filter, selectedGroupId, selectedAddressBook, selectedId, onSelect, isMultiSelectMode, selectedContactIds, toggleSelection }: { contacts: Contact[], filter: string, selectedGroupId: string, selectedAddressBook: string | null, selectedId: string | null, onSelect: (id: string) => void, isMultiSelectMode?: boolean, selectedContactIds?: string[], toggleSelection?: (id: string) => void }) {
   // Filter contacts
   const filtered = React.useMemo(() => {
     return contacts.filter(c => {
@@ -513,17 +877,27 @@ function ContactsList({ contacts, filter, selectedGroupId, selectedAddressBook, 
               return (
                 <li key={c.id}>
                   <button
-                    onClick={() => onSelect(c.id)}
+                    onClick={() => isMultiSelectMode && toggleSelection ? toggleSelection(c.id) : onSelect(c.id)}
                     className={cn(
                       "w-full text-left px-3 py-2.5 rounded-md transition-all duration-200 flex items-center space-x-3",
-                      selectedId === c.id 
+                      (!isMultiSelectMode && selectedId === c.id) || (isMultiSelectMode && selectedContactIds?.includes(c.id))
                         ? "bg-tardis text-white shadow-md scale-[1.02] z-10 relative" 
                         : "hover:bg-tardis/10 text-[var(--text-color)]"
                     )}
                   >
+                    {isMultiSelectMode && (
+                      <div className="mr-2">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedContactIds?.includes(c.id)} 
+                          readOnly 
+                          className="w-4 h-4 rounded border-gray-300 text-tardis focus:ring-tardis pointer-events-none"
+                        />
+                      </div>
+                    )}
                     <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center text-base font-bold shadow-sm transition-colors overflow-hidden",
-                      selectedId === c.id ? "bg-white text-tardis" : "bg-tardis text-white"
+                      "w-10 h-10 rounded-full flex items-center justify-center text-base font-bold shadow-sm transition-colors overflow-hidden shrink-0",
+                      (!isMultiSelectMode && selectedId === c.id) || (isMultiSelectMode && selectedContactIds?.includes(c.id)) ? "bg-white text-tardis" : "bg-tardis text-white"
                     )}>
                       {photoUrl ? (
                         <img src={photoUrl} alt={fn} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -536,7 +910,7 @@ function ContactsList({ contacts, filter, selectedGroupId, selectedAddressBook, 
                       {c.parsed.org?.[0]?.value && (
                         <p className={cn(
                           "text-xs truncate",
-                          selectedId === c.id ? "text-white/80" : "text-gray-500"
+                          (!isMultiSelectMode && selectedId === c.id) || (isMultiSelectMode && selectedContactIds?.includes(c.id)) ? "text-white/80" : "text-gray-500"
                         )}>{c.parsed.org[0].value}</p>
                       )}
                     </div>
@@ -1594,11 +1968,11 @@ function FieldSection({
       <div className="pl-3">
         <div className={cn(isGrid && isEditing ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "space-y-3")}>
           {items.map((item: any, idx: number) => (
-            <div key={idx} className="flex flex-col space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-3 w-full">
+            <div key={idx} className="flex flex-col space-y-2 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-3 w-full min-w-0">
               {isEditing ? (
                 <>
-                  <div className="flex-1 w-full sm:w-auto">
+                  <div className="flex-1 w-full sm:w-auto min-w-0">
                     {selectOptions ? (
                       <select
                         value={(() => {
