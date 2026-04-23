@@ -57,10 +57,8 @@ I'm using Who Contacts daily so I plan on supporting it long-term. I also want i
 ### Future plans
 
 - General bugfixes to ensure this compatibility
-- vCard export, globally as well as individual contacts
-- Supporting TYPE:group and TYPE:org entries (currently those are ignored, only TYPE:individual can be edited, groups are supported using the category attribute)
+- Supporting KIND:group and KIND:org entries (currently those are ignored, only TYPE:individual can be edited, groups are supported using the category attribute)
 - Improved support for custom fields (currently existing ones should be readable as well as editable, but new ones can't be added)
-- Multiselection, multi-edit (especially groups), and multi-delete
 
 ### Not in scope
 
