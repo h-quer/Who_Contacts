@@ -749,6 +749,65 @@ app.delete('/api/contacts', async (req, res) => {
   }
 });
 
+// Bulk delete contacts
+app.post('/api/contacts/bulk-delete', async (req, res) => {
+  const { contactsToDelete } = req.body;
+  
+  if (!Array.isArray(contactsToDelete)) {
+    return res.status(400).json({ error: 'contactsToDelete array required' });
+  }
+
+  try {
+    const credentials = getCredentials(req);
+    if (!credentials) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const serverUrl = process.env.CARDDAV_URL;
+    if (!serverUrl) {
+      return res.status(500).json({ error: 'Server URL not configured' });
+    }
+    
+    const client = new DAVClient({
+      serverUrl,
+      credentials,
+      authMethod: 'Basic',
+      defaultAccountType: 'carddav',
+    });
+    
+    // Login once
+    await client.login();
+    
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const contact of contactsToDelete) {
+      try {
+        const response = await client.deleteVCard({
+          vCard: {
+            url: contact.id,
+            etag: contact.etag
+          }
+        });
+        if (response.ok) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (e) {
+        console.error(`Failed to delete contact ${contact.id}:`, e);
+        errorCount++;
+      }
+    }
+    
+    res.json({ success: true, deleted: successCount, failed: errorCount });
+  } catch (err: any) {
+    console.error('Bulk delete failed:', err);
+    const status = err.message?.includes('Unauthorized') || err.message?.includes('401') ? 401 : 500;
+    res.status(status).json({ error: err.message });
+  }
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
