@@ -1,11 +1,13 @@
-@import "tailwindcss";
-
 @font-face {
     font-family: "CCTimelord";
-    src: url("/fonts/cctimelord.woff2") format("woff2"),
-         url("/fonts/cctimelord.woff") format("woff"),
-         url("/fonts/cctimelord.ttf") format("truetype");
+    src: url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.eot");
+    src: url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.eot?#iefix")format("embedded-opentype"),
+    url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.woff2")format("woff2"),
+    url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.woff")format("woff"),
+    url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.ttf")format("truetype"),
+    url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.svg#CCTimelord")format("svg");
 }
+@import "tailwindcss";
 
 @theme {
   --font-timelord: "CCTimelord", cursive;
