@@ -1,13 +1,16 @@
 @font-face {
-  font-family: "CC Timelord";
-  src: url("https://db.onlinewebfonts.com/t/bd45095d1222477efbd97893a7410940.woff2") format("woff2"),
-       url("https://db.onlinewebfonts.com/t/bd45095d1222477efbd97893a7410940.woff") format("woff"),
-       url("https://db.onlinewebfonts.com/t/bd45095d1222477efbd97893a7410940.ttf") format("truetype");
+    font-family: "CCTimelord";
+    src: url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.eot");
+    src: url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.eot?#iefix")format("embedded-opentype"),
+    url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.woff2")format("woff2"),
+    url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.woff")format("woff"),
+    url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.ttf")format("truetype"),
+    url("https://db.onlinewebfonts.com/t/1c9478b7d31dc8f5c4f6b8b5f69148d2.svg#CCTimelord")format("svg");
 }
 @import "tailwindcss";
 
 @theme {
-  --font-timelord: "CC Timelord", "CCTimelord", "CC-Timelord", cursive;
+  --font-timelord: "CCTimelord", cursive;
   --color-tardis: var(--tardis-color);
   --color-tardis-light: var(--tardis-light-color);
   --color-tardis-dark: var(--tardis-dark-color);
