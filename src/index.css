@@ -1,6 +1,13 @@
+@font-face {
+  font-family: "CC Timelord";
+  src: url("https://db.onlinewebfonts.com/t/bd45095d1222477efbd97893a7410940.woff2") format("woff2"),
+       url("https://db.onlinewebfonts.com/t/bd45095d1222477efbd97893a7410940.woff") format("woff"),
+       url("https://db.onlinewebfonts.com/t/bd45095d1222477efbd97893a7410940.ttf") format("truetype");
+}
 @import "tailwindcss";
 
 @theme {
+  --font-timelord: "CC Timelord", "CCTimelord", "CC-Timelord", cursive;
   --color-tardis: var(--tardis-color);
   --color-tardis-light: var(--tardis-light-color);
   --color-tardis-dark: var(--tardis-dark-color);
