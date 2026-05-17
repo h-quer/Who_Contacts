@@ -329,7 +329,7 @@ export default function App() {
           <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center">
             <img src="/who.png" alt="Who Contacts Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-wider hidden sm:block">Who Contacts</h1>
+          <h1 className="text-xl md:text-3xl font-timelord tracking-[0.15em] hidden sm:block text-dalek text-shadow-sm">Who Contacts</h1>
         </div>
         <div className="flex items-center space-x-2">
           
@@ -620,7 +620,7 @@ export default function App() {
               <div className="w-20 h-20 mb-6">
                 <img src="/who.png" alt="Who Contacts Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Who Contacts</h2>
+              <h2 className="text-3xl font-timelord mb-2 text-tardis tracking-widest">Who Contacts</h2>
               <p className="text-sm text-gray-500 mb-6 italic">The Doctor's Personal Address Book</p>
               
               <div className="space-y-4 w-full text-left border-t border-[var(--border-color)] pt-6">
