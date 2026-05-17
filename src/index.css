@@ -1,10 +1,11 @@
+@import "tailwindcss";
+
 @font-face {
     font-family: "CCTimelord";
     src: url("/fonts/cctimelord.woff2") format("woff2"),
          url("/fonts/cctimelord.woff") format("woff"),
          url("/fonts/cctimelord.ttf") format("truetype");
 }
-@import "tailwindcss";
 
 @theme {
   --font-timelord: "CCTimelord", cursive;
